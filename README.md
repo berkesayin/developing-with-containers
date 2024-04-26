@@ -239,7 +239,7 @@ cd7628aaaeee   postgres                            "docker-entrypoint.s…"   2 
 
 We may need to check `database` and `tables` with `datas` created for the application. For this, we will use `pgadmin` as a container. It will be using the same `network` with the `application (todo-server-c)` and `postgres (postgres-db-c)` containers.  
 
-#### Check Network Created 
+#### Check Network Created
 
 The `network` is created with the compose configuration after running `docker compose up --build command`. To see the `docker network` for our application use this command: 
 
