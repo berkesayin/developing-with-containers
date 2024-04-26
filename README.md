@@ -4,12 +4,14 @@ Developing, testing and deploying application with containers.
 
 ### Table Of Contents
 
-[**1.About The Application**](#about)
-[**2.Create Docker Assets**](#docker-assets)
-[**3.Run The Application**](#run-app)
-[**4.Add A Local DB And Persist Data**]
-[**5.Run The App Again**](#run-app-again)
-[**6.Run PG Admin As A Container With Same Network**](#run-pg-admin)
+[**1.About The Application**](#about) <br />
+[**2.Create Docker Assets**](#docker-assets) <br />
+[**3.Run The Application**](#run-app) <br />
+[**4.Add A Local DB And Persist Data**](#local-db) <br />
+[**5.Run The App Again**](#run-app-again) <br />
+[**6.Run PG Admin As A Container With Same Network**](#run-pg-admin) <br />
+[**6.Configure And Run A Development Container**](#dev-container) <br />
+
 
 ### About The Application <a name="about"></a>
 
@@ -48,6 +50,46 @@ services:
       NODE_ENV: production
     ports:
       - 3000:3000
+```
+
+```Dockerfile
+# syntax=docker/dockerfile:1
+
+# Comments are provided throughout this file to help you get started.
+# If you need more help, visit the Dockerfile reference guide at
+# https://docs.docker.com/go/dockerfile-reference/
+
+# Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
+
+ARG NODE_VERSION=20.12.1
+
+FROM node:${NODE_VERSION}-alpine
+
+# Use production node environment by default.
+ENV NODE_ENV production
+
+WORKDIR /usr/src/app
+
+# Download dependencies as a separate step to take advantage of Docker's caching.
+# Leverage a cache mount to /root/.npm to speed up subsequent builds.
+# Leverage a bind mounts to package.json and package-lock.json to avoid having to copy them into
+# into this layer.
+RUN --mount=type=bind,source=package.json,target=package.json \
+    --mount=type=bind,source=package-lock.json,target=package-lock.json \
+    --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev
+
+# Run the application as a non-root user.
+USER node
+
+# Copy the rest of the source files into the image.
+COPY . .
+
+# Expose the port that the application listens on.
+EXPOSE 3000
+
+# Run the application.
+CMD node src/index.js
 ```
 
 Run this command inside the `developing-with-containers` directory. 
@@ -90,7 +132,7 @@ or `ctrl + c` and
 docker compose rm
 ```
 
-### Add A Local DB And Persist Data <a name="docker-assets"></a>
+### Add A Local DB And Persist Data <a name="local-db"></a>
 
 Containers can be used to set up local services, like a database. Update the `compose.yaml` file for `postgre` db container. 
 
@@ -278,7 +320,10 @@ docker inspect cd7628aaaeee -f "{{json .NetworkSettings.Networks }}"
 ```
 #### Run PGAdmin As A Container With Same Network
 
-We will use `PG Admin` as another container connected to application through same `network`. The image: **dpage/pgadmin4**
+We will use `PG Admin` as another container connected to application through same `network`.
+The image: **dpage/pgadmin4**: 
+https://www.pgadmin.org/download/pgadmin-4-container/
+https://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html
 
 ```sh
 docker run -p 8080:80 \
@@ -364,3 +409,66 @@ The container `pgadmin-server-c` created and uses port `8080`. Get access: http:
 
 ![img](./assets/app2.png)
 
+Open a browser and verify that the application is running at http://localhost:3000. Then, Add some items to the todo list to test data persistence.
+
+After adding some items to the todo list, press ctrl+c in the terminal to stop your application.
+
+In the terminal, run `docker compose rm` to remove your containers and then run `docker compose up` to run your application again.
+
+```sh
+docker compose rm
+docker compose up --build
+```
+
+Refresh http://localhost:3000 in your browser and verify that the todo items persisted, even after the containers were removed and ran again.
+
+### Configure And Run A Development Container <a name="dev-container"></a>
+
+You can use a `bind mount` to mount your source code into the container. The container can then see the changes you make to the code immediately, as soon as you save a file. This means that you can run processes, like `nodemon`, in the container that watch for filesystem changes and respond to them. To learn more about `bind mounts`, see `Storage` overview. https://docs.docker.com/storage/
+
+In addition to adding a `bind mount`, you can configure your `Dockerfile` and `compose.yaml` file to install `development dependencies` and run `development tools`.
+
+#### Update Your Dockerfile For Development 
+
+Open the Dockerfile in an IDE or text editor. Note that the Dockerfile doesn't install development dependencies and doesn't run nodemon. You'll need to update your `Dockerfile` to install the `development dependencies` and run `nodemon`.
+
+Rather than creating one `Dockerfile` for `production`, and another `Dockerfile` for `development`, you can use one `multi-stage Dockerfile` for both. Update your `Dockerfile` to the following `multi-stage Dockerfile`.
+
+```Dockerfile
+# syntax=docker/dockerfile:1
+
+ARG NODE_VERSION=18.0.0
+
+FROM node:${NODE_VERSION}-alpine as base
+WORKDIR /usr/src/app
+EXPOSE 3000
+
+FROM base as dev
+RUN --mount=type=bind,source=package.json,target=package.json \
+    --mount=type=bind,source=package-lock.json,target=package-lock.json \
+    --mount=type=cache,target=/root/.npm \
+    npm ci --include=dev
+USER node
+COPY . .
+CMD npm run dev
+
+FROM base as prod
+RUN --mount=type=bind,source=package.json,target=package.json \
+    --mount=type=bind,source=package-lock.json,target=package-lock.json \
+    --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev
+USER node
+COPY . .
+CMD node src/index.js
+```
+
+In the Dockerfile, you first add a label `as base` to the `FROM node:${NODE_VERSION}-alpine` statement. This lets you refer to this `build stage` in `other build stages`. 
+
+Next, you add a `new build stage` labeled `dev` to install your `development dependencies` and start the container using `npm run dev`. 
+
+Finally, you add a `stage` labeled `prod` that omits the `dev dependencies` and runs your application using `node src/index.js`. To learn more about `multi-stage builds`, see `Multi-stage builds`.
+https://docs.docker.com/build/building/multi-stage/
+
+Next, you'll need to update your Compose file to use the new stage.
+
+#### Update Your Compose File For Development
