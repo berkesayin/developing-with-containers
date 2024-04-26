@@ -11,9 +11,11 @@ Developing, testing and deploying application with containers.
 [**5.Run The App Again**](#run-app-again) <br />
 [**6.Run PG Admin As A Container With Same Network**](#run-pg-admin) <br />
 [**6.Configure And Run A Development Container**](#dev-container) <br />
-
+[**7.Run Development Container And Debug Application**](#run-dev-container) <br />
 
 ### About The Application <a name="about"></a>
+
+Developing, testing and deploying application with containers.
 
 ### Create Docker Assets <a name="docker-assets"></a>
 
@@ -107,7 +109,8 @@ docker images
 REPOSITORY                               TAG           IMAGE ID        CREATED           SIZE
 developing-with-containers-server        latest        a987af256514    52 seconds ago    153MB
 ```
-#### Container Running 
+
+#### Container Running 
 
 ```sh
 docker ps
@@ -136,7 +139,7 @@ docker compose rm
 
 Containers can be used to set up local services, like a database. Update the `compose.yaml` file for `postgre` db container. 
 
-#### Update `compose.yaml` file:
+#### Update `compose.yaml` file
 
 ```yaml
 services:
@@ -217,8 +220,8 @@ REPOSITORY                             TAG           IMAGE ID       CREATED     
 developing-with-containers-server      latest        b84a095f6745   18 hours ago    153MB
 postgres                               latest        d4ffc32b30ba   2 months ago    453MB
 ```
-
-#### Containers Running 
+ 
+#### Containers Running
 
 ```sh
 docker ps
@@ -249,7 +252,7 @@ NETWORK ID     NAME                                      DRIVER    SCOPE
 42a5d9a6172c   developing-with-containers_todo-network   bridge    local
 ```
 
-#### Check Network Used By Containers
+#### Check Network Used By Containers
 
 **Container Name**: `todo-server-c` & **Container ID**: `05e6b9a6e1c1`
 
@@ -345,7 +348,7 @@ CONTAINER ID   IMAGE                               COMMAND                  CREA
 cd7628aaaeee   postgres                            "docker-entrypoint.s…"   23 minutes ago   Up 23 minutes (healthy)   0.0.0.0:5432->5432/tcp          postgres-db-c
 ```
 
-#### Check PG Admin Container's Network
+#### Check PG Admin Container's Network
 
 ```sh
 docker inspect 30b61c36a9c2 -f "{{json .NetworkSettings.Networks }}"
@@ -472,3 +475,152 @@ https://docs.docker.com/build/building/multi-stage/
 Next, you'll need to update your Compose file to use the new stage.
 
 #### Update Your Compose File For Development
+
+To run the `dev stage` with `Compose`, you need to update your `compose.yaml` file. Open your `compose.yaml` file in an IDE or text editor, and then add the `target: dev` instruction to `target the dev stage` from your `multi-stage Dockerfile`.
+
+Also, add a new `volume` to the `server service` for the `bind mount`. For this application, you'll mount `./src` from your local machine to `/usr/src/app/src` in the container.
+
+Lastly, publish port `9229` for `debugging`. 
+
+The following is the updated `Compose` file.
+
+```yaml
+services:
+  server:
+    build:
+      context: .
+      target: dev
+    container_name: todo-server-c
+    ports:
+      - 3000:3000
+      - 9229:9229
+    environment:
+      NODE_ENV: production
+      POSTGRES_HOST: db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/db-password
+      POSTGRES_DB: example
+    depends_on:
+      db:
+        condition: service_healthy
+    secrets:
+      - db-password
+    volumes:
+      - ./src:/usr/src/app/src
+    networks:
+      - todo-network
+  db:
+    image: postgres
+    container_name: postgres-db-c
+    restart: always
+    user: postgres
+    secrets:
+      - db-password
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=example
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
+      - POSTGRES_HOST_AUTH_METHOD=md5
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    expose:
+      - 5432
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - todo-network
+volumes:
+  db-data:
+secrets:
+  db-password:
+    file: db/password.txt
+networks:
+  todo-network:
+    driver: bridge
+```
+
+### Run Development Container And Debug Application <a name="run-dev-container"></a>
+
+First, stop the running containers with `ctrl+c` exit. And remove the containers: 
+
+```sh
+docker compose rm
+```
+Run the following command to run your application with the new changes to the `Dockerfile` and `compose.yaml` file.
+
+```sh
+docker compose up --build
+```
+
+Logs 
+
+```sh
+[+] Running 0/2
+ ⠋ Container postgres-db-c  Created                                                                                                                                                 0.1s
+ ⠋ Container todo-server-c  Created                                                                                                                                                 0.0s
+Attaching to postgres-db-c, todo-server-c
+postgres-db-c  |
+postgres-db-c  | PostgreSQL Database directory appears to contain a database; Skipping initialization
+postgres-db-c  |
+postgres-db-c  | 2024-04-26 12:08:19.807 UTC [1] LOG:  starting PostgreSQL 16.2 (Debian 16.2-1.pgdg120+2) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+postgres-db-c  | 2024-04-26 12:08:19.807 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+postgres-db-c  | 2024-04-26 12:08:19.807 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+postgres-db-c  | 2024-04-26 12:08:19.808 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+postgres-db-c  | 2024-04-26 12:08:19.811 UTC [16] LOG:  database system was shut down at 2024-04-26 12:04:38 UTC
+postgres-db-c  | 2024-04-26 12:08:19.814 UTC [1] LOG:  database system is ready to accept connections
+todo-server-c  |
+todo-server-c  | > docker-nodejs@1.0.0 dev
+todo-server-c  | > nodemon --inspect=0.0.0.0:9229 -L src/index.js
+todo-server-c  |
+todo-server-c  | [nodemon] 3.0.1
+todo-server-c  | [nodemon] to restart at any time, enter `rs`
+todo-server-c  | [nodemon] watching path(s): *.*
+todo-server-c  | [nodemon] watching extensions: js,mjs,cjs,json
+todo-server-c  | [nodemon] starting `node --inspect=0.0.0.0:9229 src/index.js`
+todo-server-c  | Debugger listening on ws://0.0.0.0:9229/bd47e042-6931-4e23-b231-35398453d8cf
+todo-server-c  | For help, see: https://nodejs.org/en/docs/inspector
+todo-server-c  | Waiting for db:5432.
+todo-server-c  | Connected!
+todo-server-c  | Connected to postgres db at host db
+todo-server-c  | Connected to db and created table todo_items if it did not exist
+todo-server-c  | Listening on port 3000
+```
+
+Run also `PG Admin` container with same network.
+
+```sh
+docker run -p 8080:80 \
+  -e 'PGADMIN_DEFAULT_EMAIL=sayinberke34@gmail.com' \
+  -e 'PGADMIN_DEFAULT_PASSWORD=Resample-Landlady5-Bottle' \
+  --network=developing-with-containers_todo-network \
+  --name=pgadmin-server-c \
+  -d dpage/pgadmin4
+```
+
+Check Running Containers
+
+```sh
+docker ps
+```
+
+```sh
+CONTAINER ID   IMAGE                               COMMAND                  CREATED         STATUS                   PORTS                                            NAMES
+a3c560334895   dpage/pgadmin4                      "/entrypoint.sh"         3 seconds ago   Up 2 seconds             443/tcp, 0.0.0.0:8080->80/tcp                    pgadmin-server-c
+50d6dff3fccd   developing-with-containers-server   "docker-entrypoint.s…"   3 minutes ago   Up 3 minutes             0.0.0.0:3000->3000/tcp, 0.0.0.0:9229->9229/tcp   todo-server-c
+4edfd8937247   postgres                            "docker-entrypoint.s…"   3 minutes ago   Up 3 minutes (healthy)   0.0.0.0:5432->5432/tcp                           postgres-db-c
+```
+
+Open a browser and verify that the application is running at http://localhost:3000.
+
+Any changes to the application's source files on your local machine will now be immediately reflected in the running container.
+
+Open ./src/static/js/app.js in an IDE or text editor and update the button text on line 109 from Add Item to Add.
+
+Refresh http://localhost:3000 in your browser and verify that the updated text appears.
+
+You can now connect an inspector client to your application for debugging. For more details about inspector clients, see the Node.js documentation.

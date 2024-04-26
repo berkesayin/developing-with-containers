@@ -2,9 +2,11 @@ services:
   server:
     build:
       context: .
+      target: dev
     container_name: todo-server-c
     ports:
       - 3000:3000
+      - 9229:9229
     environment:
       NODE_ENV: production
       POSTGRES_HOST: db
@@ -16,6 +18,8 @@ services:
         condition: service_healthy
     secrets:
       - db-password
+    volumes:
+      - ./src:/usr/src/app/src
     networks:
       - todo-network
   db:
