@@ -1,8 +1,8 @@
-## Using Containers
+# Using Containers
 
 Developing, testing and deploying application with containers.
 
-### Table Of Contents
+## Table Of Contents
 
 [**1.About The Application**](#about) <br />
 [**2.Create Docker Assets**](#docker-assets) <br />
@@ -12,12 +12,13 @@ Developing, testing and deploying application with containers.
 [**6.Run PG Admin As A Container With Same Network**](#run-pg-admin) <br />
 [**6.Configure And Run A Development Container**](#dev-container) <br />
 [**7.Run Development Container And Debug Application**](#run-dev-container) <br />
+[**8.Configure CI/CD For The Application**](#ci-cd) <br />
 
-### About The Application <a name="about"></a>
+## About The Application <a name="about"></a>
 
 Developing, testing and deploying application with containers.
 
-### Create Docker Assets <a name="docker-assets"></a>
+## Create Docker Assets <a name="docker-assets"></a>
 
 ```sh
 docker init 
@@ -39,7 +40,7 @@ docker init
 │ └── README.md
 ```
 
-### Run The Application <a name="run-app"></a>
+## Run The Application <a name="run-app"></a>
 
 `compose.yaml` file. 
 
@@ -135,7 +136,7 @@ or `ctrl + c` and
 docker compose rm
 ```
 
-### Add A Local DB And Persist Data <a name="local-db"></a>
+## Add A Local DB And Persist Data <a name="local-db"></a>
 
 Containers can be used to set up local services, like a database. Update the `compose.yaml` file for `postgre` db container. 
 
@@ -203,7 +204,7 @@ In the root directory, create a new directory named `db`. Inside it, create a fi
 
 `db/password.txt` : Resample-Landlady5-Bottle
 
-### Run The App Again <a name="run-app-again"></a>
+## Run The App Again <a name="run-app-again"></a>
 
 ```sh
 docker compose up --build 
@@ -235,7 +236,7 @@ cd7628aaaeee   postgres                            "docker-entrypoint.s…"   2 
 
 ![img](./assets/app1.png)
 
-### Run PG Admin As A Container With Same Network <a name="run-pg-admin"></a>
+## Run PG Admin As A Container With Same Network <a name="run-pg-admin"></a>
 
 We may need to check `database` and `tables` with `datas` created for the application. For this, we will use `pgadmin` as a container. It will be using the same `network` with the `application (todo-server-c)` and `postgres (postgres-db-c)` containers.  
 
@@ -425,7 +426,7 @@ docker compose up --build
 
 Refresh http://localhost:3000 in your browser and verify that the todo items persisted, even after the containers were removed and ran again.
 
-### Configure And Run A Development Container <a name="dev-container"></a>
+## Configure And Run A Development Container <a name="dev-container"></a>
 
 You can use a `bind mount` to mount your source code into the container. The container can then see the changes you make to the code immediately, as soon as you save a file. This means that you can run processes, like `nodemon`, in the container that watch for filesystem changes and respond to them. To learn more about `bind mounts`, see `Storage` overview. https://docs.docker.com/storage/
 
@@ -544,7 +545,7 @@ networks:
     driver: bridge
 ```
 
-### Run Development Container And Debug Application <a name="run-dev-container"></a>
+## Run Development Container And Debug Application <a name="run-dev-container"></a>
 
 First, stop the running containers with `ctrl+c` exit. And remove the containers: 
 
@@ -624,3 +625,81 @@ Open ./src/static/js/app.js in an IDE or text editor and update the button text 
 Refresh http://localhost:3000 in your browser and verify that the updated text appears.
 
 You can now connect an inspector client to your application for debugging. For more details about inspector clients, see the Node.js documentation.
+
+## Configure CI/CD For The Application <a name="ci-cd"></a>
+
+#### Secrets
+
+Step 1: Configuring Dockerhub secrets for GitHub repository.
+
+- Go to the repository `Settings`, and go to `Secrets and variables` > `Actions`. 
+- Create a new secret named `DOCKER_USERNAME` and your `Docker ID` (docker username) as value.
+- Create a new `Personal Access Token (PAT)` for `Docker Hub`. You can name this token `node-docker`. Make sure access permissions include `Read` and `Write`.
+https://docs.docker.com/security/for-developers/access-tokens/#create-an-access-token
+- Add the `PAT` as a second `repository secrets` in your GitHub repository, with the name `DOCKERHUB_TOKEN`.
+
+Secrets created: 
+- `DOCKER_USERNAME`
+- `DOCKERHUBE_TOKEN`
+
+#### Setup GitHub Actions Workflow
+
+Step 2: Setting up GitHub Actions workflow for building, testing, and pushing the image to Docker Hub.
+
+- Go to your repository on `GitHub` and then select the `Actions` tab.
+- Select set up a workflow yourself.
+- This takes you to a page for creating a new `GitHub actions` workflow file in your repository, under `.github/workflows/main.yml` by default.
+- In the editor window, copy and paste the following YAML configuration.
+
+```yaml
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      -
+        name: Build and test
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: test
+          load: true
+      -
+        name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          target: prod
+          tags: ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:latest
+```
+
+#### Run The Workflow
+
+Step 3: Saving the workflow file and runnig the job.
+
+- Select Commit changes... and push the changes to the main branch.
+- After pushing the commit, the workflow starts automatically.
+- Go to the Actions tab. It displays the workflow.
+- Selecting the workflow shows you the breakdown of all the steps.
+- When the workflow is complete, go to your repositories on Docker Hub.
+
+If you see the new repository in that list, it means the GitHub Actions successfully pushed the image to Docker Hub.
