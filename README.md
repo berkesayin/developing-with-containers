@@ -4,19 +4,14 @@ Developing, testing and deploying application with containers.
 
 ## Table Of Contents
 
-[**1.About The Application**](#about) <br />
-[**2.Create Docker Assets**](#docker-assets) <br />
-[**3.Run The Application**](#run-app) <br />
-[**4.Add A Local DB And Persist Data**](#local-db) <br />
-[**5.Run The App Again**](#run-app-again) <br />
-[**6.Run PG Admin As A Container With Same Network**](#run-pg-admin) <br />
-[**6.Configure And Run A Development Container**](#dev-container) <br />
-[**7.Run Development Container And Debug Application**](#run-dev-container) <br />
-[**8.Configure CI/CD For The Application**](#ci-cd) <br />
-
-## About The Application <a name="about"></a>
-
-Developing, testing and deploying application with containers.
+[1. Create Docker Assets](#docker-assets) <br />
+[2. Run The Application](#run-app) <br />
+[3. Add A Local DB And Persist Data](#local-db) <br />
+[4. Run The App Again](#run-app-again) <br />
+[5. Run PG Admin As A Container With Same Network](#run-pg-admin) <br />
+[6. Configure And Run A Development Container](#dev-container) <br />
+[7. Run Development Container And Debug Application](#run-dev-container) <br />
+[8. Configure CI/CD For The Application](#ci-cd) <br />
 
 ## Create Docker Assets <a name="docker-assets"></a>
 
@@ -24,7 +19,7 @@ Developing, testing and deploying application with containers.
 docker init 
 ```
 
-#### Directory Tree 
+### Directory Tree 
 
 ```
 ├── docker-nodejs-sample/
@@ -111,7 +106,7 @@ REPOSITORY                               TAG           IMAGE ID        CREATED  
 developing-with-containers-server        latest        a987af256514    52 seconds ago    153MB
 ```
 
-#### Container Running 
+### Container Running 
 
 ```sh
 docker ps
@@ -140,7 +135,7 @@ docker compose rm
 
 Containers can be used to set up local services, like a database. Update the `compose.yaml` file for `postgre` db container. 
 
-#### Update `compose.yaml` file
+### Update `compose.yaml` file
 
 ```yaml
 services:
@@ -198,7 +193,7 @@ networks:
     driver: bridge
 ```
 
-#### Create db/password.txt
+### Create db/password.txt
 
 In the root directory, create a new directory named `db`. Inside it, create a file named `password.txt`. Add a password there. The password must be on a single line.
 
@@ -210,7 +205,7 @@ In the root directory, create a new directory named `db`. Inside it, create a fi
 docker compose up --build 
 ```
 
-#### Images
+### Images
 
 ```sh
 docker images
@@ -222,7 +217,7 @@ developing-with-containers-server      latest        b84a095f6745   18 hours ago
 postgres                               latest        d4ffc32b30ba   2 months ago    453MB
 ```
  
-#### Containers Running
+### Containers Running
 
 ```sh
 docker ps
@@ -240,7 +235,7 @@ cd7628aaaeee   postgres                            "docker-entrypoint.s…"   2 
 
 We may need to check `database` and `tables` with `datas` created for the application. For this, we will use `pgadmin` as a container. It will be using the same `network` with the `application (todo-server-c)` and `postgres (postgres-db-c)` containers.  
 
-#### Check Network Created
+### Check Network Created
 
 The `network` is created with the compose configuration after running `docker compose up --build command`. To see the `docker network` for our application use this command: 
 
@@ -253,7 +248,7 @@ NETWORK ID     NAME                                      DRIVER    SCOPE
 42a5d9a6172c   developing-with-containers_todo-network   bridge    local
 ```
 
-#### Check Network Used By Containers
+### Check Network Used By Containers
 
 **Container Name**: `todo-server-c` & **Container ID**: `05e6b9a6e1c1`
 
@@ -322,7 +317,7 @@ docker inspect cd7628aaaeee -f "{{json .NetworkSettings.Networks }}"
   }
 }
 ```
-#### Run PGAdmin As A Container With Same Network
+### Run PGAdmin As A Container With Same Network
 
 We will use `PG Admin` as another container connected to application through same `network`.
 The image: **dpage/pgadmin4**: 
@@ -432,7 +427,7 @@ You can use a `bind mount` to mount your source code into the container. The con
 
 In addition to adding a `bind mount`, you can configure your `Dockerfile` and `compose.yaml` file to install `development dependencies` and run `development tools`.
 
-#### Update Your Dockerfile For Development 
+### Update Your Dockerfile For Development 
 
 Open the Dockerfile in an IDE or text editor. Note that the Dockerfile doesn't install development dependencies and doesn't run nodemon. You'll need to update your `Dockerfile` to install the `development dependencies` and run `nodemon`.
 
@@ -475,7 +470,7 @@ https://docs.docker.com/build/building/multi-stage/
 
 Next, you'll need to update your Compose file to use the new stage.
 
-#### Update Your Compose File For Development
+### Update Your Compose File For Development
 
 To run the `dev stage` with `Compose`, you need to update your `compose.yaml` file. Open your `compose.yaml` file in an IDE or text editor, and then add the `target: dev` instruction to `target the dev stage` from your `multi-stage Dockerfile`.
 
@@ -628,7 +623,7 @@ You can now connect an inspector client to your application for debugging. For m
 
 ## Configure CI/CD For The Application <a name="ci-cd"></a>
 
-#### Secrets
+### Secrets
 
 Step 1: Configuring Dockerhub secrets for GitHub repository.
 
@@ -657,7 +652,7 @@ name: ci
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   build:
@@ -692,7 +687,7 @@ jobs:
           tags: ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:latest
 ```
 
-#### Run The Workflow
+### Run The Workflow
 
 Step 3: Saving the workflow file and runnig the job.
 
