@@ -33,7 +33,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          platforms: linux/amd64,linux/arm64/v8
           push: true
           target: prod
-          tags: ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:2.0
+          tags: ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:latest
