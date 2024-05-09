@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: todo-site
-        image: berkesayin/developing-with-containers:latest
+        image: berkesayin/developing-with-containers:3.0
         imagePullPolicy: Always
 ---
 apiVersion: v1
