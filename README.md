@@ -4,16 +4,17 @@ Developing, testing and deploying application with containers.
 
 ## Table Of Contents
 
-[1. Create Docker Assets](#docker-assets) <br />
-[2. Run The Application](#run-app) <br />
-[3. Add A Local DB And Persist Data](#local-db) <br />
-[4. Run The App Again](#run-app-again) <br />
-[5. Run PG Admin As A Container With Same Network](#run-pg-admin) <br />
-[6. Configure And Run A Development Container](#dev-container) <br />
-[7. Run Development Container And Debug Application](#run-dev-container) <br />
-[8. Configure CI/CD For The Application](#ci-cd) <br />
+1. [Create Docker Assets](#docker-assets) <br />
+2. [Run The Application](#run-app) <br />
+3. [Add A Local DB And Persist Data](#local-db) <br />
+4. [Run The App Again](#run-app-again) <br />
+5. [Run PG Admin As A Container With Same Network](#run-pg-admin) <br />
+6. [Configure And Run A Development Container](#dev-container) <br />
+7. [Run Development Container And Debug Application](#run-dev-container) <br />
+8. [Configure CI/CD For The Application](#ci-cd) <br />
+9. [Deploying The Application To Kubernetes](#k8s) <br />
 
-## Create Docker Assets <a name="docker-assets"></a>
+## 1. Create Docker Assets <a name="docker-assets"></a>
 
 ```sh
 docker init 
@@ -35,7 +36,7 @@ docker init
 │ └── README.md
 ```
 
-## Run The Application <a name="run-app"></a>
+## 2. Run The Application <a name="run-app"></a>
 
 `compose.yaml` file. 
 
@@ -95,7 +96,7 @@ Run this command inside the `developing-with-containers` directory.
 ```sh
 docker compose up --build
 ```
-#### Image Created 
+### Image Created 
 
 ```sh
 docker images
@@ -119,7 +120,7 @@ CONTAINER ID   IMAGE                               COMMAND                  CREA
 
 Go to http://localhost:3000/ and add new todo item. 
 
-#### Stop The Application
+### Stop The Application
 
 ```sh
 docker compose down
@@ -131,7 +132,7 @@ or `ctrl + c` and
 docker compose rm
 ```
 
-## Add A Local DB And Persist Data <a name="local-db"></a>
+## 3. Add A Local DB And Persist Data <a name="local-db"></a>
 
 Containers can be used to set up local services, like a database. Update the `compose.yaml` file for `postgre` db container. 
 
@@ -199,7 +200,7 @@ In the root directory, create a new directory named `db`. Inside it, create a fi
 
 `db/password.txt` : Resample-Landlady5-Bottle
 
-## Run The App Again <a name="run-app-again"></a>
+## 4. Run The App Again <a name="run-app-again"></a>
 
 ```sh
 docker compose up --build 
@@ -231,7 +232,7 @@ cd7628aaaeee   postgres                            "docker-entrypoint.s…"   2 
 
 ![img](./assets/app1.png)
 
-## Run PG Admin As A Container With Same Network <a name="run-pg-admin"></a>
+## 5. Run PG Admin As A Container With Same Network <a name="run-pg-admin"></a>
 
 We may need to check `database` and `tables` with `datas` created for the application. For this, we will use `pgadmin` as a container. It will be using the same `network` with the `application (todo-server-c)` and `postgres (postgres-db-c)` containers.  
 
@@ -344,7 +345,7 @@ CONTAINER ID   IMAGE                               COMMAND                  CREA
 cd7628aaaeee   postgres                            "docker-entrypoint.s…"   23 minutes ago   Up 23 minutes (healthy)   0.0.0.0:5432->5432/tcp          postgres-db-c
 ```
 
-#### Check PG Admin Container's Network
+### Check PG Admin Container's Network
 
 ```sh
 docker inspect 30b61c36a9c2 -f "{{json .NetworkSettings.Networks }}"
@@ -421,7 +422,7 @@ docker compose up --build
 
 Refresh http://localhost:3000 in your browser and verify that the todo items persisted, even after the containers were removed and ran again.
 
-## Configure And Run A Development Container <a name="dev-container"></a>
+## 6. Configure And Run A Development Container <a name="dev-container"></a>
 
 You can use a `bind mount` to mount your source code into the container. The container can then see the changes you make to the code immediately, as soon as you save a file. This means that you can run processes, like `nodemon`, in the container that watch for filesystem changes and respond to them. To learn more about `bind mounts`, see `Storage` overview. https://docs.docker.com/storage/
 
@@ -540,7 +541,7 @@ networks:
     driver: bridge
 ```
 
-## Run Development Container And Debug Application <a name="run-dev-container"></a>
+## 7. Run Development Container And Debug Application <a name="run-dev-container"></a>
 
 First, stop the running containers with `ctrl+c` exit. And remove the containers: 
 
@@ -621,7 +622,7 @@ Refresh http://localhost:3000 in your browser and verify that the updated text a
 
 You can now connect an inspector client to your application for debugging. For more details about inspector clients, see the Node.js documentation.
 
-## Configure CI/CD For The Application <a name="ci-cd"></a>
+## 8. Configure CI/CD For The Application <a name="ci-cd"></a>
 
 ### Secrets
 
@@ -637,7 +638,7 @@ Secrets created:
 - `DOCKER_USERNAME`
 - `DOCKERHUBE_TOKEN`
 
-#### Setup GitHub Actions Workflow
+### Setup GitHub Actions Workflow
 
 Step 2: Setting up GitHub Actions workflow for building, testing, and pushing the image to Docker Hub.
 
@@ -682,9 +683,10 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          platforms: linux/amd64,linux/arm64/v8 # multi-platform image
           push: true
           target: prod
-          tags: ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:3.0
 ```
 
 ### Run The Workflow
@@ -698,3 +700,160 @@ Step 3: Saving the workflow file and runnig the job.
 - When the workflow is complete, go to your repositories on Docker Hub.
 
 If you see the new repository in that list, it means the GitHub Actions successfully pushed the image to Docker Hub.
+
+## 9. Deploying The Application To Kubernetes <a name="docker-assets"></a>
+
+### Setup Environment
+
+`Enable Kubernetes` in Docker Desktop - Settings - Kubernetes. After enabling Kubernetes and resetting Kubernets cluster, check images: 
+
+```sh
+docker/desktop-kubernetes                       kubernetes-v1.29.2-cni-v1.4.0-critools-v1.29.0-cri-dockerd-v0.3.11-1-debian   c8405f018c81   2 months ago    423MB
+registry.k8s.io/kube-apiserver                  v1.29.2                                                                       2bceedbd3273   2 months ago    123MB
+registry.k8s.io/kube-proxy                      v1.29.2                                                                       6241433e83b5   2 months ago    85.4MB
+registry.k8s.io/kube-controller-manager         v1.29.2                                                                       32eb28f276a5   2 months ago    118MB
+registry.k8s.io/kube-scheduler                  v1.29.2                                                                       96e2c08ad32e   2 months ago    58MB
+gcr.io/k8s-minikube/kicbase                     v0.0.42                                                                       62753ecb37c4   6 months ago    1.11GB
+registry.k8s.io/etcd                            3.5.10-0                                                                      79f8d13ae8b8   6 months ago    136MB
+registry.k8s.io/coredns/coredns                 v1.11.1                                                                       2437cf762177   8 months ago    57.4MB
+docker/desktop-vpnkit-controller                dc331cb22850be0cdd97c84a9cfecaf44a1afb6e                                      3750dfec169f   12 months ago   35MB
+registry.k8s.io/pause                           3.9                                                                           829e9de338bd   19 months ago   514kB
+docker/desktop-storage-provisioner              v2.0                                                                          c027a58fa0bb   3 years ago     39.8MB
+```
+
+The image `gcr.io/k8s-minikube/kicbase` is pulled with `minikube start --driver docker` command. Other images are pulled after `Enable Kubernetes` at `Docker Desktop`. 
+
+If `kubectl` is pointing to some other environment, such as `minikube` or a `GKE cluster`, ensure you change the context so that `kubectl` is pointing to `docker-desktop`:
+
+```sh
+kubectl config get-contexts
+```
+
+```sh
+CURRENT   NAME             CLUSTER          AUTHINFO         NAMESPACE
+*         docker-desktop   docker-desktop   docker-desktop
+          minikube         minikube         minikube         default
+```
+
+```sh
+kubectl config use-context docker-desktop
+```
+
+```sh
+Switched to context "docker-desktop".
+```
+
+List the available nodes:
+
+```sh
+kubectl get nodes -o wide 
+```
+
+```sh
+NAME             STATUS   ROLES           AGE   VERSION   INTERNAL-IP    EXTERNAL-IP   OS-IMAGE         KERNEL-VERSION    CONTAINER-RUNTIME
+docker-desktop   Ready    control-plane   44h   v1.29.2   192.168.65.3   <none>        Docker Desktop   6.6.22-linuxkit   docker://26.0.0
+```
+
+### Create a Kubernetes YAML File
+
+Create a file named `app.yaml`.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-docker
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      todo: web
+  template:
+    metadata:
+      labels:
+        todo: web
+    spec:
+      containers:
+      - name: todo-site
+        image: berkesayin/developing-with-containers:3.0
+        imagePullPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: todo-entrypoint
+  namespace: default
+spec:
+  type: NodePort
+  selector:
+    todo: web
+  ports:
+  - port: 3000
+    targetPort: 3000
+    nodePort: 30001
+```
+
+Note that the image `berkesayin/developing-with-containers:3.0` is compatible with my computer, `linux/arm64` arch platform.
+
+![img](./assets/dockerhub.png)
+
+### Deploy And Check The Application
+
+Deploy application to Kubernetes:
+
+```sh
+kubectl apply -f app.yaml
+```
+
+```sh
+deployment.apps/node-docker created
+service/todo-entrypoint created
+```
+
+List deployments:
+
+```sh
+kubectl get deployments -o wide
+```
+
+```sh
+NAME          READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                                      SELECTOR
+node-docker   0/1     1            0           19s   todo-site    berkesayin/developing-with-containers:3.0   todo=web
+```
+
+List pods:
+
+```sh
+kubectl get pods -o wide
+```
+
+
+```sh
+NAME                           READY   STATUS    RESTARTS   AGE   IP          NODE             NOMINATED NODE   READINESS GATES
+node-docker-75594cbbd4-p4xj4   1/1     Running   0          72s   10.1.0.87   docker-desktop   <none>           <none>
+```
+
+List services:
+
+```sh
+kubectl get services -o wide
+```
+
+```sh
+NAME              TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)          AGE     SELECTOR
+kubernetes        ClusterIP   10.96.0.1      <none>        443/TCP          44h     <none>
+todo-entrypoint   NodePort    10.105.219.7   <none>        3000:30001/TCP   2m30s   todo=web
+```
+
+In addition to the default `kubernetes` service, you can see your `todo-entrypoint` service, accepting traffic on port `30001/TCP`.
+
+Open a browser and visit your app at `localhost:30001`. You should see your application.
+
+![img](./assets/app3.png)
+
+Run the following command to tear down your application:
+
+```sh
+kuebctl delete -f app.yaml
+```
