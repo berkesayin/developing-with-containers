@@ -701,9 +701,9 @@ Step 3: Saving the workflow file and runnig the job.
 
 If you see the new repository in that list, it means the GitHub Actions successfully pushed the image to Docker Hub.
 
-## 9. Deploying The Application To Kubernetes <a name="docker-assets"></a>
+## 9. Deploying The Application To Kubernetes <a name="k8s"></a>
 
-### Setup Environment
+### Setup Environment
 
 `Enable Kubernetes` in Docker Desktop - Settings - Kubernetes. After enabling Kubernetes and resetting Kubernets cluster, check images: 
 
@@ -798,7 +798,7 @@ Note that the image `berkesayin/developing-with-containers:3.0` is compatible wi
 
 ![img](./assets/dockerhub.png)
 
-### Deploy And Check The Application
+### Deploy And Check The Application
 
 Deploy application to Kubernetes:
 
